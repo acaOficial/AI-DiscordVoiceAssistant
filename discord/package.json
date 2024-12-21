@@ -1,0 +1,28 @@
+{
+  "name": "discord",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx watch index.ts",
+    "start": "node dist/index.js",
+    "build": "tsup index.ts --minify"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@discordjs/voice": "^0.18.0",
+    "@google-cloud/speech": "^6.7.0",
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.7",
+    "esbuild": "^0.24.2",
+    "esbuild-copy-static-files": "^0.1.0",
+    "tsc": "^2.0.4"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
