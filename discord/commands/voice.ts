@@ -1,5 +1,7 @@
 import { VoiceReceiver, VoiceConnection, EndBehaviorType, entersState, VoiceConnectionStatus } from '@discordjs/voice';
 import { VoiceBuffer } from '../utils/buffer';
+import { VoiceParser } from '../utils/parser/parser';
+import { voiceParser } from '../dependencies';
 
 /**
  * Función para escuchar los usuarios en un canal de voz.
@@ -16,7 +18,7 @@ async function execute(connection: VoiceConnection): Promise<void> {
 
     receiver.speaking.on('start', (userId) => {
         console.log(`El usuario ${userId} ha empezado a hablar.`);
-        const buffer = new VoiceBuffer(userId);
+        const buffer = new VoiceBuffer(userId, voiceParser);
         createListener(receiver, userId, buffer);
     });
 
