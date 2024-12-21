@@ -1,6 +1,5 @@
 import { VoiceReceiver, VoiceConnection, EndBehaviorType, entersState, VoiceConnectionStatus } from '@discordjs/voice';
 import { VoiceBuffer } from '../utils/buffer';
-import { VoiceParser } from '../utils/parser/parser';
 import { voiceParser } from '../dependencies';
 
 /**
@@ -37,7 +36,7 @@ function createListener(receiver: VoiceReceiver, userId: string, buffer: VoiceBu
     const opusStream = receiver.subscribe(userId, {
         end: {
             behavior: EndBehaviorType.AfterSilence,
-            duration: 1000,
+            duration: 3000,
         },
     });
 

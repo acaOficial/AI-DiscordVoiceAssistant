@@ -16,8 +16,8 @@ prompt = ChatPromptTemplate.from_template(template)
 chain = prompt | model
 
 result = chain.invoke({
-    "context": "A: Hello, how are you? B: I'm fine, thank you. And you?",
-    "question": "What did B say?"
+    "context": "",
+    "question": "Antonio es mi amigo y le gustan los chicos. ¿Qué debería hacer?",
 })
 
 print(result)
