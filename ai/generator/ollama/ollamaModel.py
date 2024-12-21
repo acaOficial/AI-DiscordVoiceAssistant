@@ -1,6 +1,6 @@
 from langchain_ollama import OllamaLLM
 from langchain_core.prompts import ChatPromptTemplate
-from ai.generator.generator import Generator
+from generator.generator import Generator
 
 class OllamaGenerator(Generator):
     def __init__(self, model_name="llama3"):

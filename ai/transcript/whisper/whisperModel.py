@@ -1,5 +1,5 @@
 import whisper
-from ai.transcript.transcriptor import Transcriptor
+from transcript.transcriptor import Transcriptor
 
 class WhisperTranscriptor(Transcriptor):
     def __init__(self, model_name='small'):

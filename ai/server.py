@@ -7,6 +7,8 @@ from generator.ollama.ollamaModel import OllamaGenerator
 from transcript.whisper.whisperModel import WhisperTranscriptor
 import tempfile
 from typing import Any, Dict, Union
+import asyncio
+import os
 
 async def process_message(message_data: Dict[str, Any], transcriptor: Transcriptor, generator: Generator) -> Union[str, Any]:
     """
@@ -29,11 +31,15 @@ async def handle_audio(data: str, transcriptor: Transcriptor) -> str:
     audio_data = base64.b64decode(data)
     transcribed_text = ""
 
-    with tempfile.NamedTemporaryFile(suffix=".wav") as audio_file:
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as audio_file:
         audio_file.write(audio_data)
         audio_path = audio_file.name
+        
+        print(f"Transcribiendo audio en {audio_path}...")
 
         transcribed_text = await transcriptor.handle_audio(audio_path)
+    
+    os.remove(audio_path)
 
     return transcribed_text
 
@@ -91,4 +97,4 @@ if __name__ == "__main__":
     port = 5067
     transcriptor = WhisperTranscriptor()
     generator = OllamaGenerator()
-    start_server(host, port, transcriptor, generator)
+    asyncio.run(start_server(host, port, transcriptor, generator))
