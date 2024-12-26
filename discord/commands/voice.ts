@@ -1,6 +1,8 @@
 import { VoiceReceiver, VoiceConnection, EndBehaviorType, entersState, VoiceConnectionStatus } from '@discordjs/voice';
 import { VoiceBuffer } from '../utils/buffer';
 import { voiceParser } from '../dependencies';
+import { OpusDecoder } from 'opus-decoder';
+//import { OpusDecoder } from '@discordjs/opus';
 
 /**
  * Función para escuchar los usuarios en un canal de voz.
@@ -32,7 +34,10 @@ async function execute(connection: VoiceConnection): Promise<void> {
  * @param userId - El ID del usuario de tipo `string`.
  * @param buffer - La instancia de `VoiceBuffer` para almacenar los datos de voz.
  */
-function createListener(receiver: VoiceReceiver, userId: string, buffer: VoiceBuffer): void {
+async function createListener(receiver: VoiceReceiver, userId: string, buffer: VoiceBuffer): Promise<void> {
+    const decoder = new OpusDecoder({sampleRate: 48000, channels: 2});
+    await decoder.ready;
+
     const opusStream = receiver.subscribe(userId, {
         end: {
             behavior: EndBehaviorType.AfterSilence,
@@ -40,15 +45,45 @@ function createListener(receiver: VoiceReceiver, userId: string, buffer: VoiceBu
         },
     });
 
-    opusStream.on('data', (chunk) => {
+    // opusStream.on('data', (chunk) => {
+    //     if (opusStream.readableEnded) {
+    //         console.log('El flujo ha terminado de emitir datos.');
+    //         return;
+    //     }
+
+    //     // Añadir el chunk de audio al buffer
+    //     buffer.addChunk(chunk);
+    //     console.log('Recibido chunk de audio:', chunk);
+    // });
+
+    opusStream.on('data', async (chunk) => {
         if (opusStream.readableEnded) {
             console.log('El flujo ha terminado de emitir datos.');
             return;
         }
-
-        // Añadir el chunk de audio al buffer
-        buffer.addChunk(chunk);
-        console.log('Recibido chunk de audio:', chunk);
+    
+        // Verificar la longitud de los datos recibidos
+        if (!chunk || chunk.length === 0) {
+            console.log('Paquete de audio vacío recibido.');
+            return;
+        }
+    
+        try {
+            // Decodificar el chunk de audio
+            const {channelData, samplesDecoded, sampleRate} = decoder.decodeFrame(chunk);
+            if (samplesDecoded === 0) {
+                console.log('No se pudieron decodificar muestras.');
+                return;
+            }
+    
+            // Convertir el chunk de audio a PCM
+            const pcm = Buffer.concat(channelData.map(channel => Buffer.from(new Uint8Array(channel.buffer))));
+    
+            // Añadir el chunk de audio al buffer
+            buffer.addChunk(pcm);
+        } catch (error) {
+            console.error('Error al decodificar el paquete Opus:', error);
+        }
     });
 
     opusStream.on('end', async () => {

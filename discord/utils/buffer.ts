@@ -1,4 +1,6 @@
 import { VoiceParser } from "./parser/parser";
+import ffmpeg from "fluent-ffmpeg";
+import { Readable } from "stream";
 
 /**
  * Clase que maneja el buffer de voz de un usuario en un canal de voz.
@@ -31,12 +33,11 @@ export class VoiceBuffer {
     }
 
     /**
-     * Convierte el contenido del buffer de voz en texto.
+     * Convierte el contenido del buffer de voz (Opus) a PCM (WAV) y luego lo convierte a texto.
      * @returns {Promise<string>} - El texto resultante de la conversión de audio a texto.
      */
-    async convertToText() {
-        const audioBuffer = this.getBuffer();
-        const text = await this.parser.speechToText(audioBuffer);
+    async convertToText(): Promise<string> {
+        const text = await this.parser.speechToText(this.getBuffer());
         return text;
     }
 }

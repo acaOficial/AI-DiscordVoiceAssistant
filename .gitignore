@@ -4,3 +4,5 @@ dist/
 models/
 **/__pycache__/
 package-lock.json
+.opus
+.wav
