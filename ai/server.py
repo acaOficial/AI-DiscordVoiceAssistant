@@ -1,19 +1,21 @@
+import io
 import socket
 import json
 import base64
+import tempfile
+import os
+import wave
+import binascii
+import subprocess
 from generator.generator import Generator
 from transcript.transcriptor import Transcriptor
 from generator.ollama.ollamaModel import OllamaGenerator
 from transcript.whisper.whisperModel import WhisperTranscriptor
-import tempfile
-from typing import Any, Dict, Union
 import asyncio
-import os
+from typing import Any, Dict, Union
+
 
 async def process_message(message_data: Dict[str, Any], transcriptor: Transcriptor, generator: Generator) -> Union[str, Any]:
-    """
-    Procesa el mensaje recibido según su tipo.
-    """
     message_type = message_data.get('type')
     content = message_data.get('content')
 
@@ -24,61 +26,77 @@ async def process_message(message_data: Dict[str, Any], transcriptor: Transcript
     else:
         return "Tipo de mensaje no reconocido"
 
-async def handle_audio(data: str, transcriptor: Transcriptor) -> str:
-    """
-    Procesa los datos de audio (en base64).
-    """
-    audio_data = base64.b64decode(data)
-    transcribed_text = ""
 
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as audio_file:
-        audio_file.write(audio_data)
-        audio_path = audio_file.name
-        
-        print(f"Transcribiendo audio en {audio_path}...")
+async def handle_audio(audio_path: str, transcriptor: 'Transcriptor') -> str:
+    wav_path = None
 
-        transcribed_text = await transcriptor.handle_audio(audio_path)
-    
-    os.remove(audio_path)
+    try:
 
-    return transcribed_text
+        # Convertir PCM a WAV
+        wav_path = audio_path.replace(".pcm", ".wav")
+        with wave.open(wav_path, 'wb') as wav_file:
+            # Definir las propiedades del archivo WAV:
+            nchannels = 2  # Número de canales (2 para estéreo)
+            sampwidth = 2  # Tamaño de la muestra (2 bytes para 16 bits)
+            framerate = 48000  # Frecuencia de muestreo de 48 kHz
+            
+            wav_file.setnchannels(nchannels)
+            wav_file.setsampwidth(sampwidth)
+            wav_file.setframerate(framerate)
+            wav_file.writeframes(io.open(audio_path, 'rb').read())
+
+        # Validar el archivo WAV
+        try:
+            with wave.open(wav_path, 'rb') as audio_check:
+                if audio_check.getnchannels() != nchannels:
+                    raise ValueError(f"El archivo WAV tiene {audio_check.getnchannels()} canales, pero se esperaban {nchannels}.")
+        except wave.Error as e:
+            raise ValueError(f"El archivo no es un archivo WAV válido: {e}")
+
+        # Procesar el archivo con el transcriptor en un hilo separado si no es asíncrono
+        transcribed_text = transcriptor.handle_audio(wav_path)
+        return transcribed_text
+
+    except Exception as e:
+        print(f"Error en el manejo de audio: {e}")
+        raise
+    finally:
+        # Limpiar los archivos temporales
+        if wav_path and os.path.exists(wav_path):
+            os.remove(wav_path)
+
 
 async def handle_text(data: str, generator: Generator) -> str:
-    """
-    Procesa los datos de texto.
-    """
     prediction = await generator.handle_text(data)
     return prediction
 
-async def handle_client_connection(client_socket: socket.socket, transcriptor: Transcriptor, generator: Generator) -> None:
-    """
-    Maneja la comunicación con el cliente.
-    """
-    try:
-        # Buffer para almacenar los datos recibidos
-        data = b""
-        
-        while True:
-            chunk = client_socket.recv(1024)  # Lee en bloques de 1024 bytes
-            data += chunk
-            if len(chunk) < 1024:  # Si el bloque es más pequeño, es el final de la transmisión
-                break
-        
-        message = data.decode()
-        
-        message_data = json.loads(message)
 
+async def handle_client_connection(client_socket: socket.socket, transcriptor: Transcriptor, generator: Generator) -> None:
+    try:
+        data = b""
+        while True:
+            chunk = client_socket.recv(1024)
+            data += chunk
+            if len(chunk) < 1024:
+                break
+
+        message = data.decode()
+        print(f"Mensaje recibido: {message[:100]}...")  # Muestra solo los primeros 100 caracteres para evitar desbordes
+
+        message_data = json.loads(message)
         response = await process_message(message_data, transcriptor, generator)
 
-        client_socket.send(response.encode())
-
+        # Asegúrate de que 'response' sea una cadena antes de hacer .encode()
+        if isinstance(response, str):
+            client_socket.send(response.encode())
+        else:
+            client_socket.send(str(response).encode())  # Convertir a string si es necesario
     except Exception as e:
         print(f"Error durante la comunicación: {e}")
 
+
+
 async def start_server(host: str, port: int, transcriptor: Transcriptor, generator: Generator) -> None:
-    """
-    Inicia el servidor TCP.
-    """
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
     server_socket.listen(5)
@@ -91,6 +109,7 @@ async def start_server(host: str, port: int, transcriptor: Transcriptor, generat
         await handle_client_connection(client_socket, transcriptor, generator)
 
         client_socket.close()
+
 
 if __name__ == "__main__":
     host = '127.0.0.1'
