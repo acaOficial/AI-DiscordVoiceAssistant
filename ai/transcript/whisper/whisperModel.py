@@ -9,12 +9,12 @@ class WhisperTranscriptor(Transcriptor):
         # Cargar el modelo de Whisper
         self.model = whisper.load_model(model_name)
 
-    async def handle_audio(self, audio_path: str, language: str = 'es') -> str:
+    def handle_audio(self, audio_path: str, language: str = 'es') -> str:
         """
         Procesa los datos de audio y devuelve la transcripción utilizando Whisper.
         """
         # Transcribir el audio
-        result = await self.model.transcribe(audio_path, language=language, verbose=True)
+        result = self.model.transcribe(audio_path, language=language, verbose=True)
         
         # Extraer el texto transcrito
         transcribed_text = result.get('text', '')

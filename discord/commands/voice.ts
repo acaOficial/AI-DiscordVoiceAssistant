@@ -2,6 +2,8 @@ import { VoiceReceiver, VoiceConnection, EndBehaviorType, entersState, VoiceConn
 import { VoiceBuffer } from '../utils/buffer';
 import { voiceParser } from '../dependencies';
 import { OpusDecoder } from 'opus-decoder';
+import OpusScript from 'opusscript';
+
 //import { OpusDecoder } from '@discordjs/opus';
 
 /**
@@ -35,8 +37,15 @@ async function execute(connection: VoiceConnection): Promise<void> {
  * @param buffer - La instancia de `VoiceBuffer` para almacenar los datos de voz.
  */
 async function createListener(receiver: VoiceReceiver, userId: string, buffer: VoiceBuffer): Promise<void> {
-    const decoder = new OpusDecoder({sampleRate: 48000, channels: 2});
-    await decoder.ready;
+    //const decoder = new prism.opus.Decoder({ frameSize: 960, channels: 2, rate: 48000 });
+    //const decoder = new OpusDecoder({sampleRate: 48000, channels: 2});
+
+    const SAMPLE_RATE = 48000; // Tasa de muestreo en Hz
+    const CHANNELS = 2; // Número de canales: 1 para mono, 2 para estéreo
+    const APPLICATION = OpusScript.Application.AUDIO; // Uso genérico de audio
+
+    // Crear una instancia del decodificador OpusScript
+    
 
     const opusStream = receiver.subscribe(userId, {
         end: {
@@ -45,42 +54,19 @@ async function createListener(receiver: VoiceReceiver, userId: string, buffer: V
         },
     });
 
-    // opusStream.on('data', (chunk) => {
-    //     if (opusStream.readableEnded) {
-    //         console.log('El flujo ha terminado de emitir datos.');
-    //         return;
-    //     }
-
-    //     // Añadir el chunk de audio al buffer
-    //     buffer.addChunk(chunk);
-    //     console.log('Recibido chunk de audio:', chunk);
-    // });
-
-    opusStream.on('data', async (chunk) => {
-        if (opusStream.readableEnded) {
-            console.log('El flujo ha terminado de emitir datos.');
-            return;
-        }
-    
-        // Verificar la longitud de los datos recibidos
-        if (!chunk || chunk.length === 0) {
-            console.log('Paquete de audio vacío recibido.');
-            return;
-        }
-    
+    opusStream.on('data', (chunk) => {
         try {
+            const decoder = new OpusScript(SAMPLE_RATE, CHANNELS, APPLICATION);
             // Decodificar el chunk de audio
-            const {channelData, samplesDecoded, sampleRate} = decoder.decodeFrame(chunk);
-            if (samplesDecoded === 0) {
+            const decoded = decoder.decode(chunk); // Asumiendo que chunk es un Buffer
+            if (!decoded || decoded.length === 0) {
                 console.log('No se pudieron decodificar muestras.');
                 return;
             }
-    
-            // Convertir el chunk de audio a PCM
-            const pcm = Buffer.concat(channelData.map(channel => Buffer.from(new Uint8Array(channel.buffer))));
-    
-            // Añadir el chunk de audio al buffer
-            buffer.addChunk(pcm);
+
+            // Añadir el chunk de audio decodificado al buffer
+            buffer.addChunk(Buffer.from(decoded));
+            decoder.delete();
         } catch (error) {
             console.error('Error al decodificar el paquete Opus:', error);
         }

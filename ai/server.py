@@ -27,20 +27,10 @@ async def process_message(message_data: Dict[str, Any], transcriptor: Transcript
         return "Tipo de mensaje no reconocido"
 
 
-async def handle_audio(data: str, transcriptor: 'Transcriptor') -> str:
-    audio_path = None
+async def handle_audio(audio_path: str, transcriptor: 'Transcriptor') -> str:
     wav_path = None
-    try:
-        # Decodificar los datos base64
-        try:
-            audio_data = base64.b64decode(data, validate=True)
-        except binascii.Error:
-            raise ValueError("Los datos proporcionados no están en formato base64 válido")
 
-        # Crear un archivo temporal para el audio PCM
-        with tempfile.NamedTemporaryFile(suffix=".pcm", delete=False) as pcm_file:
-            pcm_file.write(audio_data)
-            audio_path = pcm_file.name
+    try:
 
         # Convertir PCM a WAV
         wav_path = audio_path.replace(".pcm", ".wav")
@@ -49,12 +39,11 @@ async def handle_audio(data: str, transcriptor: 'Transcriptor') -> str:
             nchannels = 2  # Número de canales (2 para estéreo)
             sampwidth = 2  # Tamaño de la muestra (2 bytes para 16 bits)
             framerate = 48000  # Frecuencia de muestreo de 48 kHz
-            nframes = len(audio_data) // (nchannels * sampwidth)
             
             wav_file.setnchannels(nchannels)
             wav_file.setsampwidth(sampwidth)
             wav_file.setframerate(framerate)
-            wav_file.writeframes(audio_data)
+            wav_file.writeframes(io.open(audio_path, 'rb').read())
 
         # Validar el archivo WAV
         try:
@@ -65,7 +54,7 @@ async def handle_audio(data: str, transcriptor: 'Transcriptor') -> str:
             raise ValueError(f"El archivo no es un archivo WAV válido: {e}")
 
         # Procesar el archivo con el transcriptor en un hilo separado si no es asíncrono
-        transcribed_text = await asyncio.to_thread(transcriptor.handle_audio, wav_path)
+        transcribed_text = transcriptor.handle_audio(wav_path)
         return transcribed_text
 
     except Exception as e:
@@ -73,8 +62,6 @@ async def handle_audio(data: str, transcriptor: 'Transcriptor') -> str:
         raise
     finally:
         # Limpiar los archivos temporales
-        if audio_path and os.path.exists(audio_path):
-            os.remove(audio_path)
         if wav_path and os.path.exists(wav_path):
             os.remove(wav_path)
 
