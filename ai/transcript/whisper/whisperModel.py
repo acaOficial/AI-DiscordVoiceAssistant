@@ -2,7 +2,7 @@ import whisper
 from transcript.transcriptor import Transcriptor
 
 class WhisperTranscriptor(Transcriptor):
-    def __init__(self, model_name='small'):
+    def __init__(self, model_name='turbo'):
         """
         Inicializa el transcriptor con el modelo Whisper.
         """

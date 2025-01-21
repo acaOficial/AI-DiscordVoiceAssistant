@@ -1,19 +1,12 @@
-import io
-import socket
+import asyncio
 import json
-import base64
-import tempfile
-import os
 import wave
-import binascii
-import subprocess
+import os
+from typing import Any, Dict, Union
+from transcript.wav2vec2.wav2vec2Model import Wav2Vec2SpanishTranscriptor
 from generator.generator import Generator
 from transcript.transcriptor import Transcriptor
 from generator.ollama.ollamaModel import OllamaGenerator
-from transcript.whisper.whisperModel import WhisperTranscriptor
-import asyncio
-from typing import Any, Dict, Union
-
 
 async def process_message(message_data: Dict[str, Any], transcriptor: Transcriptor, generator: Generator) -> Union[str, Any]:
     message_type = message_data.get('type')
@@ -26,94 +19,86 @@ async def process_message(message_data: Dict[str, Any], transcriptor: Transcript
     else:
         return "Tipo de mensaje no reconocido"
 
-
 async def handle_audio(audio_path: str, transcriptor: 'Transcriptor') -> str:
     wav_path = None
 
     try:
-
-        # Convertir PCM a WAV
+        # Convertir PCM a WAV (en hilo separado)
         wav_path = audio_path.replace(".pcm", ".wav")
-        with wave.open(wav_path, 'wb') as wav_file:
-            # Definir las propiedades del archivo WAV:
-            nchannels = 2  # Número de canales (2 para estéreo)
-            sampwidth = 2  # Tamaño de la muestra (2 bytes para 16 bits)
-            framerate = 48000  # Frecuencia de muestreo de 48 kHz
-            
-            wav_file.setnchannels(nchannels)
-            wav_file.setsampwidth(sampwidth)
-            wav_file.setframerate(framerate)
-            wav_file.writeframes(io.open(audio_path, 'rb').read())
+        await asyncio.to_thread(convert_pcm_to_wav, audio_path, wav_path)
 
-        # Validar el archivo WAV
-        try:
-            with wave.open(wav_path, 'rb') as audio_check:
-                if audio_check.getnchannels() != nchannels:
-                    raise ValueError(f"El archivo WAV tiene {audio_check.getnchannels()} canales, pero se esperaban {nchannels}.")
-        except wave.Error as e:
-            raise ValueError(f"El archivo no es un archivo WAV válido: {e}")
+        # Validar archivo WAV (también en hilo separado)
+        await asyncio.to_thread(validate_wav, wav_path)
 
-        # Procesar el archivo con el transcriptor en un hilo separado si no es asíncrono
-        transcribed_text = transcriptor.handle_audio(wav_path)
+        # Transcribir audio (esto sigue siendo asincrónico)
+        transcribed_text = await asyncio.to_thread(transcriptor.handle_audio, wav_path)
+        print(transcribed_text)
         return transcribed_text
 
     except Exception as e:
         print(f"Error en el manejo de audio: {e}")
-        raise
+        return f"Error en el manejo de audio: {str(e)}"
     finally:
-        # Limpiar los archivos temporales
         if wav_path and os.path.exists(wav_path):
             os.remove(wav_path)
 
-
 async def handle_text(data: str, generator: Generator) -> str:
-    prediction = await generator.handle_text(data)
-    return prediction
+    return await asyncio.to_thread(generator.handle_text, data)
 
-
-async def handle_client_connection(client_socket: socket.socket, transcriptor: Transcriptor, generator: Generator) -> None:
+async def handle_client_connection(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, transcriptor: Transcriptor, generator: Generator) -> None:
     try:
-        data = b""
-        while True:
-            chunk = client_socket.recv(1024)
-            data += chunk
-            if len(chunk) < 1024:
-                break
-
+        data = await reader.read(4096)
         message = data.decode()
-        print(f"Mensaje recibido: {message[:100]}...")  # Muestra solo los primeros 100 caracteres para evitar desbordes
+        print(f"Mensaje recibido: {message[:100]}...")
 
         message_data = json.loads(message)
         response = await process_message(message_data, transcriptor, generator)
 
-        # Asegúrate de que 'response' sea una cadena antes de hacer .encode()
-        if isinstance(response, str):
-            client_socket.send(response.encode())
-        else:
-            client_socket.send(str(response).encode())  # Convertir a string si es necesario
+        writer.write(response.encode() if isinstance(response, str) else str(response).encode())
+        await writer.drain()
     except Exception as e:
         print(f"Error durante la comunicación: {e}")
-
-
+    finally:
+        writer.close()
+        await writer.wait_closed()
 
 async def start_server(host: str, port: int, transcriptor: Transcriptor, generator: Generator) -> None:
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((host, port))
-    server_socket.listen(5)
+    server = await asyncio.start_server(
+        lambda r, w: handle_client_connection(r, w, transcriptor, generator),
+        host, port
+    )
     print(f"Servidor escuchando en {host}:{port}...")
 
-    while True:
-        client_socket, client_address = server_socket.accept()
-        print(f"Conexión recibida de {client_address}")
+    async with server:
+        await server.serve_forever()
 
-        await handle_client_connection(client_socket, transcriptor, generator)
+def convert_pcm_to_wav(pcm_path: str, wav_path: str) -> None:
+    try:
+        # Conversión de PCM a WAV
+        with wave.open(wav_path, 'wb') as wav_file:
+            nchannels, sampwidth, framerate = 2, 2, 24000
+            wav_file.setnchannels(nchannels)
+            wav_file.setsampwidth(sampwidth)
+            wav_file.setframerate(framerate)
+            with open(pcm_path, 'rb') as pcm_file:
+                wav_file.writeframes(pcm_file.read())
+    except Exception as e:
+        print(f"Error al convertir PCM a WAV: {e}")
+        raise
 
-        client_socket.close()
-
+def validate_wav(wav_path: str) -> None:
+    try:
+        # Validación del archivo WAV
+        with wave.open(wav_path, 'rb') as audio_check:
+            if audio_check.getnchannels() != 2:
+                raise ValueError("El archivo WAV no tiene 2 canales.")
+    except Exception as e:
+        print(f"Error al validar archivo WAV: {e}")
+        raise
 
 if __name__ == "__main__":
     host = '127.0.0.1'
     port = 5067
-    transcriptor = WhisperTranscriptor()
+    transcriptor = Wav2Vec2SpanishTranscriptor()
     generator = OllamaGenerator()
     asyncio.run(start_server(host, port, transcriptor, generator))

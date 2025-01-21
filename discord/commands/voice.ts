@@ -40,7 +40,7 @@ async function createListener(receiver: VoiceReceiver, userId: string, buffer: V
     //const decoder = new prism.opus.Decoder({ frameSize: 960, channels: 2, rate: 48000 });
     //const decoder = new OpusDecoder({sampleRate: 48000, channels: 2});
 
-    const SAMPLE_RATE = 48000; // Tasa de muestreo en Hz
+    const SAMPLE_RATE = 24000; // Tasa de muestreo en Hz
     const CHANNELS = 2; // Número de canales: 1 para mono, 2 para estéreo
     const APPLICATION = OpusScript.Application.AUDIO; // Uso genérico de audio
 
