@@ -1,6 +1,7 @@
 import { VoiceReceiver, VoiceConnection, EndBehaviorType, entersState, VoiceConnectionStatus } from '@discordjs/voice';
 import { VoiceBuffer } from '../utils/buffer';
 import { voiceParser } from '../dependencies';
+import { TextAnalyzer } from '../utils/textAnalyzer';
 // import OpusScript from 'opusscript';
 import { OpusEncoder } from '@discordjs/opus';
 
@@ -39,6 +40,7 @@ async function execute(connection: VoiceConnection): Promise<void> {
 async function createListener(receiver: VoiceReceiver, userId: string, buffer: VoiceBuffer): Promise<void> {
     // Crear una instancia del codificador OpusEncoder
     const encoder = new OpusEncoder(48000, 2);
+    const textAnalyzer = new TextAnalyzer();
 
     const opusStream = receiver.subscribe(userId, {
         end: {
@@ -70,6 +72,8 @@ async function createListener(receiver: VoiceReceiver, userId: string, buffer: V
         console.log('El flujo de audio ha terminado.');
         const text = await buffer.convertToText();
         console.log(`Texto resultante: ${text}`);
+        
+        textAnalyzer.processText(text);
     });
 
     opusStream.on('error', (err) => {
