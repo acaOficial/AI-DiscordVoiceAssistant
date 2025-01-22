@@ -76,7 +76,7 @@ def convert_pcm_to_wav(pcm_path: str, wav_path: str) -> None:
     try:
         # Conversión de PCM a WAV
         with wave.open(wav_path, 'wb') as wav_file:
-            nchannels, sampwidth, framerate = 2, 2, 24000
+            nchannels, sampwidth, framerate = 2, 2, 48000
             wav_file.setnchannels(nchannels)
             wav_file.setsampwidth(sampwidth)
             wav_file.setframerate(framerate)
