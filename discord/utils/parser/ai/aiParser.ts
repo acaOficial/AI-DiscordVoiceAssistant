@@ -18,4 +18,14 @@ export class AiParser implements VoiceParser {
             return Promise.resolve('');
         }
     }
+
+    async textResponse(text: string): Promise<string> {
+        try {
+            const result = await this.client.sendText(text) as string;
+            return result;
+        } catch (error) {
+            console.error('Error en la solicitud de respuesta de texto:', error);
+            return Promise.resolve('');
+        }
+    }
 }

@@ -43,6 +43,9 @@ async def handle_audio(audio_path: str, transcriptor: 'Transcriptor') -> str:
             os.remove(wav_path)
 
 async def handle_text(data: str, generator: Generator) -> str:
+    context = "Este es el contexto de la conversación anterior. Aquí se han intercambiado varios mensajes."
+    question = "¿Cuál sería el próximo paso en nuestra discusión?"
+    data = context + "\n" + question
     return await asyncio.to_thread(generator.handle_text, data)
 
 async def handle_client_connection(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, transcriptor: Transcriptor, generator: Generator) -> None:

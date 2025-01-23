@@ -1,6 +1,5 @@
 export class TextAnalyzer {
     private activationPhrase: string;
-
     constructor(activationPhrase: string = "oye asistente") {
         this.activationPhrase = activationPhrase.toLowerCase();
     }
@@ -18,10 +17,12 @@ export class TextAnalyzer {
      * Procesa el texto y ejecuta una acción si se detecta la frase de activación.
      * @param text - El texto a analizar.
      */
-    public processText(text: string): void {
+    public processText(text: string): boolean {
         if (this.containsActivationPhrase(text)) {
             this.activateAssistant();
+            return true;
         }
+        return false;
     }
 
     /**
@@ -30,4 +31,5 @@ export class TextAnalyzer {
     private activateAssistant(): void {
         console.log('Activación detectada. ¿En qué puedo ayudarte?');
     }
+
 }

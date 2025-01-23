@@ -1,9 +1,12 @@
-import { VoiceReceiver, VoiceConnection, EndBehaviorType, entersState, VoiceConnectionStatus } from '@discordjs/voice';
+import { VoiceReceiver, VoiceConnection, EndBehaviorType, entersState, VoiceConnectionStatus, AudioReceiveStream } from '@discordjs/voice';
 import { VoiceBuffer } from '../utils/buffer';
 import { voiceParser } from '../dependencies';
 import { TextAnalyzer } from '../utils/textAnalyzer';
 // import OpusScript from 'opusscript';
 import { OpusEncoder } from '@discordjs/opus';
+
+let activateUserID: string | null = null;
+const listeners = new Map<string, AudioReceiveStream>();
 
 
 /**
@@ -20,13 +23,24 @@ async function execute(connection: VoiceConnection): Promise<void> {
     const receiver = connection.receiver;
 
     receiver.speaking.on('start', (userId) => {
-        console.log(`El usuario ${userId} ha empezado a hablar.`);
-        const buffer = new VoiceBuffer(userId, voiceParser);
-        createListener(receiver, userId, buffer);
+        if (activateUserID === userId || activateUserID === null) {
+            console.log(`El usuario ${userId} ha empezado a hablar.`);
+            const buffer = new VoiceBuffer(userId, voiceParser);
+            createListener(receiver, userId, buffer).then((stream) => {
+                listeners.set(userId, stream);
+            });
+
+            if (activateUserID === userId) {
+                destroyListeners(userId);
+            }
+        }
     });
 
     receiver.speaking.on('end', (userId) => {
-        console.log(`El usuario ${userId} ha dejado de hablar.`);
+        if (activateUserID === userId || activateUserID === null) {
+            console.log(`El usuario ${userId} ha dejado de hablar.`);
+        }
+
     });
 }
 
@@ -37,7 +51,7 @@ async function execute(connection: VoiceConnection): Promise<void> {
  * @param userId - El ID del usuario de tipo `string`.
  * @param buffer - La instancia de `VoiceBuffer` para almacenar los datos de voz.
  */
-async function createListener(receiver: VoiceReceiver, userId: string, buffer: VoiceBuffer): Promise<void> {
+async function createListener(receiver: VoiceReceiver, userId: string, buffer: VoiceBuffer): Promise<AudioReceiveStream> {
     // Crear una instancia del codificador OpusEncoder
     const encoder = new OpusEncoder(48000, 2);
     const textAnalyzer = new TextAnalyzer();
@@ -67,18 +81,49 @@ async function createListener(receiver: VoiceReceiver, userId: string, buffer: V
     });
 
     opusStream.on('end', async () => {
-
         // Añadir el buffer acumulado al buffer de voz
         console.log('El flujo de audio ha terminado.');
         const text = await buffer.convertToText();
         console.log(`Texto resultante: ${text}`);
         
-        textAnalyzer.processText(text);
+        if (!activateUserID){
+            const result = textAnalyzer.processText(text);
+
+            if (result) {
+                activateUserID = userId;
+            }
+            return;
+        }
+
+        voiceParser.textResponse(text).then((response) => {
+            console.log(`Respuesta del servidor: ${response}`);
+        });
+
+
+
     });
 
     opusStream.on('error', (err) => {
         console.error('Error en la transmisión de audio:', err);
     });
+
+
+    return opusStream;
 }
+
+
+function destroyListeners(exceptUserId: string) {
+    listeners.forEach((stream, id) => {
+        if (id !== exceptUserId) {
+            if (stream) {
+                stream.destroy();
+            }
+            listeners.delete(id); 
+        }
+    });
+    console.log(`Todos los listeners han sido destruidos, excepto el de ${exceptUserId}.`);
+}
+
+
 
 export default execute;
