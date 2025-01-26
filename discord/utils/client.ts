@@ -45,12 +45,16 @@ export class SocketClient {
 
             socket.on('end', () => {
                 resolve(response);
-                fs.unlinkSync(audioFilePath);
+                if (fs.existsSync(audioFilePath)) {
+                    fs.unlinkSync(audioFilePath);
+                }
             });
 
             socket.on('error', (err: Error) => {
-                reject(`Error al conectar con el servidor: ${err.message}`);
-                fs.unlinkSync(audioFilePath);
+                reject(`Error al conectar con el servidor: ${err.message}`);   
+                if (fs.existsSync(audioFilePath)) {
+                    fs.unlinkSync(audioFilePath);
+                }
             });
         });
     }

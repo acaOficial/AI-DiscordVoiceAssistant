@@ -95,7 +95,7 @@ async function createListener(receiver: VoiceReceiver, userId: string, buffer: V
             return;
         }
 
-        voiceParser.textResponse(text).then((response) => {
+        const result = voiceParser.textResponse(text).then((response) => {
             console.log(`Respuesta del servidor: ${response}`);
         });
 
@@ -121,7 +121,6 @@ function destroyListeners(exceptUserId: string) {
             listeners.delete(id); 
         }
     });
-    console.log(`Todos los listeners han sido destruidos, excepto el de ${exceptUserId}.`);
 }
 
 
