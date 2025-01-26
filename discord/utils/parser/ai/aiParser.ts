@@ -21,8 +21,8 @@ export class AiParser implements VoiceParser {
 
     async textResponse(text: string): Promise<string> {
         try {
-            const result = await this.client.sendText(text) as string;
-            return result;
+            const audioPath = await this.client.sendText(text) as string;
+            return audioPath;
         } catch (error) {
             console.error('Error en la solicitud de respuesta de texto:', error);
             return Promise.resolve('');

@@ -95,11 +95,9 @@ async function createListener(receiver: VoiceReceiver, userId: string, buffer: V
             return;
         }
 
-        const result = voiceParser.textResponse(text).then((response) => {
+        voiceParser.textResponse(text).then((response) => {
             console.log(`Respuesta del servidor: ${response}`);
         });
-
-
 
     });
 

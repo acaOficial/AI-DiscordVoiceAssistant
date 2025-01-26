@@ -3,19 +3,25 @@ import json
 import wave
 import os
 from typing import Any, Dict, Union
-from transcript.wav2vec2.wav2vec2Model import Wav2Vec2SpanishTranscriptor
+
+# Interface
 from generator.generator import Generator
 from transcript.transcriptor import Transcriptor
-from generator.ollama.ollamaModel import OllamaGenerator
+from speak.speaker import Speaker
 
-async def process_message(message_data: Dict[str, Any], transcriptor: Transcriptor, generator: Generator) -> Union[str, Any]:
+# Implementation
+from generator.ollama.ollamaModel import OllamaGenerator
+from transcript.wav2vec2.wav2vec2Model import Wav2Vec2SpanishTranscriptor
+from speak.pyttsx3.simpleSpeaker import SimpleSpeaker
+
+async def process_message(message_data: Dict[str, Any], transcriptor: Transcriptor, generator: Generator, speaker: Speaker) -> Union[str, Any]:
     message_type = message_data.get('type')
     content = message_data.get('content')
 
     if message_type == 'audio':
         return await handle_audio(content, transcriptor)
     elif message_type == 'text':
-        return await handle_text(content, generator)
+        return await handle_text(content, generator, speaker)
     else:
         return "Tipo de mensaje no reconocido"
 
@@ -42,17 +48,19 @@ async def handle_audio(audio_path: str, transcriptor: 'Transcriptor') -> str:
         if wav_path and os.path.exists(wav_path):
             os.remove(wav_path)
 
-async def handle_text(data: str, generator: Generator) -> str:
-    return await asyncio.to_thread(generator.handle_text, data)
+async def handle_text(data: str, generator: Generator, speaker: Speaker) -> str:
+    response = await asyncio.to_thread(generator.handle_text, data)
+    audio_path = await asyncio.to_thread(speaker.text2speech, response)
+    return audio_path
 
-async def handle_client_connection(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, transcriptor: Transcriptor, generator: Generator) -> None:
+async def handle_client_connection(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, transcriptor: Transcriptor, generator: Generator, speaker: Speaker) -> None:
     try:
         data = await reader.read(4096)
         message = data.decode()
         print(f"Mensaje recibido: {message[:100]}...")
 
         message_data = json.loads(message)
-        response = await process_message(message_data, transcriptor, generator)
+        response = await process_message(message_data, transcriptor, generator, speaker)
 
         writer.write(response.encode() if isinstance(response, str) else str(response).encode())
         await writer.drain()
@@ -62,9 +70,9 @@ async def handle_client_connection(reader: asyncio.StreamReader, writer: asyncio
         writer.close()
         await writer.wait_closed()
 
-async def start_server(host: str, port: int, transcriptor: Transcriptor, generator: Generator) -> None:
+async def start_server(host: str, port: int, transcriptor: Transcriptor, generator: Generator, speaker: Speaker) -> None:
     server = await asyncio.start_server(
-        lambda r, w: handle_client_connection(r, w, transcriptor, generator),
+        lambda r, w: handle_client_connection(r, w, transcriptor, generator, speaker),
         host, port
     )
     print(f"Servidor escuchando en {host}:{port}...")
@@ -101,4 +109,5 @@ if __name__ == "__main__":
     port = 5067
     transcriptor = Wav2Vec2SpanishTranscriptor()
     generator = OllamaGenerator()
-    asyncio.run(start_server(host, port, transcriptor, generator))
+    speaker = SimpleSpeaker()
+    asyncio.run(start_server(host, port, transcriptor, generator, speaker))
