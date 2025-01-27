@@ -15,10 +15,12 @@
     "@deepgram/sdk": "^3.9.0",
     "@discord-player/opus": "^0.1.2",
     "@discordjs/opus": "^0.10.0",
+    "@discordjs/rest": "^2.4.2",
     "@discordjs/voice": "^0.18.0",
+    "@discordjs/ws": "^2.0.1",
     "@google-cloud/speech": "^6.7.0",
     "@types/fluent-ffmpeg": "^2.1.27",
-    "discord.js": "^14.16.3",
+    "discord.js": "^14.17.3",
     "dotenv": "^16.4.7",
     "esbuild": "^0.24.2",
     "esbuild-copy-static-files": "^0.1.0",
@@ -26,10 +28,13 @@
     "opus-decoder": "^0.7.7",
     "opusscript": "^0.0.8",
     "rebuild": "^0.1.2",
+    "string-similarity": "^4.0.4",
     "tsc": "^2.0.4",
+    "undici": "^7.3.0",
     "wav": "^1.0.2"
   },
   "devDependencies": {
+    "@types/fuzzyset.js": "^0.0.5",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
