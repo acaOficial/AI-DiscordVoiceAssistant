@@ -43,7 +43,7 @@ async def handle_audio(audio_path: str, transcriptor: 'Transcriptor') -> str:
 
     except Exception as e:
         print(f"Error en el manejo de audio: {e}")
-        return f"Error en el manejo de audio: {str(e)}"
+        return ""
     finally:
         if wav_path and os.path.exists(wav_path):
             os.remove(wav_path)
