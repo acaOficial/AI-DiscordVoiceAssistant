@@ -17,16 +17,13 @@ import {
 } from '@discordjs/voice';
 import fs from 'fs';
 import path from 'path';
+import { Mutex } from 'async-mutex'; // Importar Mutex
 
 let activateUserID: string | null = null;
-let soundOn = false;
 const listeners = new Map<string, AudioReceiveStream>();
 const player = new AudioPlayer();
+const lock = new Mutex(); // Crear un cerrojo (lock)
 
-/**
- * Función para escuchar los usuarios en un canal de voz.
- * @param connection - La conexión al canal de voz de tipo `VoiceConnection`.
- */
 async function execute(connection: VoiceConnection): Promise<void> {
     if (!connection) {
         throw new Error('La conexión al canal de voz es inválida.');
@@ -37,40 +34,36 @@ async function execute(connection: VoiceConnection): Promise<void> {
     const receiver = connection.receiver;
 
     receiver.speaking.on('start', (userId) => {
-        // Si ya hay un usuario activo, no procesar nuevas llamadas
-        if (activateUserID && activateUserID !== userId) {
-            console.log(`Ignorando al usuario ${userId} porque ${activateUserID} ya está activo.`);
-            return;
-        }
+        // Intentar adquirir el cerrojo (lock)
+        lock.acquire().then(async (release) => {
+            try {
+                // Si ya hay un usuario activo, no procesar nuevas llamadas
+                if (activateUserID && activateUserID !== userId) {
+                    console.log(`Ignorando al usuario ${userId} porque ${activateUserID} ya está activo.`);
+                    return;
+                }
 
-        console.log(`El usuario ${userId} ha empezado a hablar.`);
-        const buffer = new VoiceBuffer(userId, voiceParser);
+                const buffer = new VoiceBuffer(userId, voiceParser);
 
-        // Que no cree un nuevo oyente si ya existe uno para el usuario
-        if (!listeners.has(userId)) {
-            createListener(receiver, userId, buffer, connection).then((stream) => {
-                listeners.set(userId, stream);
-            });
-        }
+                if (!listeners.has(userId)){
+                    console.log('Creando un nuevo oyente de audio.');
+                    createListener(receiver, userId, buffer, connection).then((stream) => {
+                        listeners.set(userId, stream);
+                    });
+                }
 
-        if (activateUserID === userId) {
-            destroyListeners(userId);
-        }
+
+            } finally {
+                release(); // Liberar el cerrojo después de procesar
+            }
+        });
     });
 
     receiver.speaking.on('end', (userId) => {
-        if (activateUserID === userId) {
-            console.log(`El usuario activo ${userId} ha dejado de hablar.`);
-        }
+        console.log(`El usuario ${userId} ha dejado de hablar.`);
     });
 }
 
-/**
- * Función para crear un oyente de audio.
- * @param receiver - El receptor de voz de tipo `VoiceReceiver`.
- * @param userId - El ID del usuario de tipo `string`.
- * @param buffer - La instancia de `VoiceBuffer` para almacenar los datos de voz.
- */
 async function createListener(receiver: VoiceReceiver, userId: string, buffer: VoiceBuffer, connection: VoiceConnection): Promise<AudioReceiveStream> {
     const encoder = new OpusEncoder(48000, 2);
     const textAnalyzer = new TextAnalyzer();
@@ -98,23 +91,29 @@ async function createListener(receiver: VoiceReceiver, userId: string, buffer: V
         const text = await buffer.convertToText();
         console.log(`Texto resultante: ${text} del usuario ${userId}`);
 
-        // Activar solo si aún no hay un usuario activo
-        if (!activateUserID) {
-            const result = textAnalyzer.processText(text);
+        lock.acquire().then(async (release) => {
+            try {
+                if (!activateUserID && text && text.length > 0) {
+                    const result = textAnalyzer.processText(text);
 
-            if (result) {
-                activateUserID = userId;
-                destroyAllListeners();
-                await playNotificationSound(connection, 'notification.mp3');
-            } 
+                    if (result) {
+                        activateUserID = userId;
+                        destroyAllListeners();
+                        await playNotificationSound(connection, 'notification.mp3');
+                    }
 
-            return
-        }
+                    return;
+                }
 
-        if (!soundOn) {
-            await playGeneratedAudio(connection, text);
-            activateUserID = null;
-        }
+                if (text && text.length > 0) {
+                    await playGeneratedAudio(connection, text);
+                    activateUserID = null;
+                }
+            } finally {
+                listeners.delete(userId);
+                release();
+            }
+        });
     });
 
     opusStream.on('error', (err) => {
@@ -124,10 +123,6 @@ async function createListener(receiver: VoiceReceiver, userId: string, buffer: V
     return opusStream;
 }
 
-/**
- * Elimina todos los oyentes excepto el del usuario especificado.
- * @param exceptUserId - El ID del usuario que no se debe eliminar.
- */
 function destroyListeners(exceptUserId: string) {
     listeners.forEach((stream, id) => {
         if (id !== exceptUserId) {
@@ -137,10 +132,6 @@ function destroyListeners(exceptUserId: string) {
     });
 }
 
-/**
- * Destruye todos los oyentes de audio.
- * @returns Nada.
- */
 function destroyAllListeners() {
     listeners.forEach((stream) => {
         stream?.destroy();
@@ -148,12 +139,6 @@ function destroyAllListeners() {
     listeners.clear();
 }
 
-/**
- * Reproduce un archivo de audio generado por `voiceParser.textResponse` y espera hasta que termine.
- * @param connection - La conexión al canal de voz.
- * @param text - El texto que se convertirá a audio.
- * @returns Una promesa que se resuelve cuando la reproducción finaliza.
- */
 async function playGeneratedAudio(connection: VoiceConnection, text: string): Promise<void> {
     return new Promise(async (resolve, reject) => {
         try {
@@ -169,34 +154,25 @@ async function playGeneratedAudio(connection: VoiceConnection, text: string): Pr
 
             connection.subscribe(player);
             player.play(resource);
-            soundOn = true;
 
             player.once(AudioPlayerStatus.Idle, () => {
                 console.log('Reproducción finalizada.');
                 fs.unlink(audioFilePath, (err) => {
                     if (err) console.error('Error al eliminar el archivo de audio:', err);
                 });
-                soundOn = false;
                 resolve();
             });
 
-            player.on('error',(err) => {
+            player.on('error', (err) => {
                 console.error('Error al reproducir el archivo de audio:', err);
-                soundOn = false;
                 reject(err);
             });
         } catch (error) {
-            soundOn = false;
             reject(error);
         }
     });
 }
 
-/**
- * Reproduce un sonido de notificación.
- * @param connection - La conexión al canal de voz.
- * @param fileName - El nombre del archivo de sonido.
- */
 async function playNotificationSound(connection: VoiceConnection, fileName: string): Promise<void> {
     const filePath = path.join(__dirname, '../sounds', fileName);
     console.log(`Reproduciendo sonido de notificación: ${filePath}`);
