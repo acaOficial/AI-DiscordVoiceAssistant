@@ -71,7 +71,7 @@ async function createListener(receiver: VoiceReceiver, userId: string, buffer: V
     const opusStream = receiver.subscribe(userId, {
         end: {
             behavior: EndBehaviorType.AfterSilence,
-            duration: 3000,
+            duration: 2000,
         },
     });
 
@@ -145,7 +145,7 @@ async function playGeneratedAudio(connection: VoiceConnection, text: string): Pr
             const audioFilePath = await voiceParser.textResponse(text);
 
             if (!audioFilePath) {
-                reject(new Error('No se generó un archivo de audio.'));
+                // reject(new Error('No se generó un archivo de audio.'));
                 return;
             }
 
