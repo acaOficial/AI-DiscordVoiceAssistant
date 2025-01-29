@@ -12,7 +12,7 @@ from speak.speaker import Speaker
 # Implementation
 from generator.ollama.ollamaModel import OllamaGenerator
 from transcript.wav2vec2.wav2vec2Model import Wav2Vec2SpanishTranscriptor
-from speak.pyttsx3.simpleSpeaker import SimpleSpeaker
+from speak.TTSpeaker.ttSpeaker import TTSpeaker
 
 async def process_message(message_data: Dict[str, Any], transcriptor: Transcriptor, generator: Generator, speaker: Speaker) -> Union[str, Any]:
     message_type = message_data.get('type')
@@ -108,6 +108,8 @@ if __name__ == "__main__":
     host = '127.0.0.1'
     port = 5067
     transcriptor = Wav2Vec2SpanishTranscriptor()
-    generator = OllamaGenerator()
-    speaker = SimpleSpeaker()
+    generator = OllamaGenerator(model_name="llama3.2")
+
+    speaker_wav = os.path.abspath("./ai/sounds/speaker.wav")
+    speaker = TTSpeaker(speaker_wav)
     asyncio.run(start_server(host, port, transcriptor, generator, speaker))
