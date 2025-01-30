@@ -1,6 +1,4 @@
-import { VoiceParser } from "./parser/parser";
-import ffmpeg from "fluent-ffmpeg";
-import { Readable } from "stream";
+import { InputParser } from "./parser/parser";
 
 /**
  * Clase que maneja el buffer de voz de un usuario en un canal de voz.
@@ -9,9 +7,9 @@ export class VoiceBuffer {
 
     private userId: string;
     private buffer: Buffer[];
-    private parser: VoiceParser;
+    private parser: InputParser;
 
-    constructor(userId: string, parser: VoiceParser) {
+    constructor(userId: string, parser: InputParser) {
         this.userId = userId;
         this.buffer = [];
         this.parser = parser;

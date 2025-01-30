@@ -13,6 +13,7 @@ from speak.speaker import Speaker
 from generator.ollama.ollamaModel import OllamaGenerator
 from transcript.wav2vec2.wav2vec2Model import Wav2Vec2SpanishTranscriptor
 from speak.TTSpeaker.ttSpeaker import TTSpeaker
+from speak.pyttsx3.simpleSpeaker import SimpleSpeaker
 
 async def process_message(message_data: Dict[str, Any], transcriptor: Transcriptor, generator: Generator, speaker: Speaker) -> Union[str, Any]:
     message_type = message_data.get('type')

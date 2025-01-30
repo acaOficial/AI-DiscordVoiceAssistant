@@ -1,7 +1,5 @@
 import { Client, GatewayIntentBits, Collection, Events, IntentsBitField } from 'discord.js';
 import * as dotenv from 'dotenv';
-import * as fs from 'fs';
-import * as path from 'path';
 import join from './commands/join';
 
 dotenv.config();
@@ -51,7 +49,7 @@ client.on('messageCreate', async message => {
         console.log(`Command: ${commandName}`);
         if (command) {
             try {
-                await command(message, client); // Aquí pasas el canal de voz y el cliente como parámetros
+                await command(message, client);
             } catch (error) {
                 console.error(`Error executing command: ${commandName}`, error);
             }
@@ -61,6 +59,5 @@ client.on('messageCreate', async message => {
 
 client.commands.set("join", join);
 
-// Iniciar sesión en Discord
 client.login(process.env.TOKEN);
 

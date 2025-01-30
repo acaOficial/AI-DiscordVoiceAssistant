@@ -17,13 +17,19 @@ import {
 } from '@discordjs/voice';
 import fs from 'fs';
 import path from 'path';
-import { Mutex } from 'async-mutex'; // Importar Mutex
+import { Mutex } from 'async-mutex';
 
 let activateUserID: string | null = null;
 const listeners = new Map<string, AudioReceiveStream>();
 const player = new AudioPlayer();
-const lock = new Mutex(); // Crear un cerrojo (lock)
+const lock = new Mutex();
 
+
+/**
+ * Función principal que maneja la conexión de voz y sus eventos.
+ * @param {VoiceConnection} connection - La conexión de voz activa para el canal de Discord.
+ * @throws {Error} - Lanza un error si la conexión de voz es inválida.
+ */
 async function execute(connection: VoiceConnection): Promise<void> {
     if (!connection) {
         throw new Error('La conexión al canal de voz es inválida.');
@@ -34,10 +40,8 @@ async function execute(connection: VoiceConnection): Promise<void> {
     const receiver = connection.receiver;
 
     receiver.speaking.on('start', (userId) => {
-        // Intentar adquirir el cerrojo (lock)
         lock.acquire().then(async (release) => {
             try {
-                // Si ya hay un usuario activo, no procesar nuevas llamadas
                 if (activateUserID && activateUserID !== userId) {
                     console.log(`Ignorando al usuario ${userId} porque ${activateUserID} ya está activo.`);
                     return;
@@ -54,7 +58,7 @@ async function execute(connection: VoiceConnection): Promise<void> {
 
 
             } finally {
-                release(); // Liberar el cerrojo después de procesar
+                release();
             }
         });
     });
@@ -64,6 +68,15 @@ async function execute(connection: VoiceConnection): Promise<void> {
     });
 }
 
+
+/**
+ * Crea un oyente para capturar y procesar el audio del usuario especificado.
+ * @param {VoiceReceiver} receiver - El receptor de voz de la conexión.
+ * @param {string} userId - El ID del usuario cuyo audio será capturado.
+ * @param {VoiceBuffer} buffer - El buffer utilizado para almacenar los datos de audio.
+ * @param {VoiceConnection} connection - La conexión de voz activa.
+ * @returns {Promise<AudioReceiveStream>} - Promesa que resuelve con el stream de audio recibido.
+ */
 async function createListener(receiver: VoiceReceiver, userId: string, buffer: VoiceBuffer, connection: VoiceConnection): Promise<AudioReceiveStream> {
     const encoder = new OpusEncoder(48000, 2);
     const textAnalyzer = new TextAnalyzer();
@@ -87,9 +100,7 @@ async function createListener(receiver: VoiceReceiver, userId: string, buffer: V
     });
 
     opusStream.on('end', async () => {
-        console.log('El flujo de audio ha terminado.');
         const text = await buffer.convertToText();
-        console.log(`Texto resultante: ${text} del usuario ${userId}`);
 
         lock.acquire().then(async (release) => {
             try {
@@ -123,15 +134,12 @@ async function createListener(receiver: VoiceReceiver, userId: string, buffer: V
     return opusStream;
 }
 
-function destroyListeners(exceptUserId: string) {
-    listeners.forEach((stream, id) => {
-        if (id !== exceptUserId) {
-            stream?.destroy();
-            listeners.delete(id);
-        }
-    });
-}
 
+/**
+ * Destruye todos los oyentes de audio activos y limpia el mapa de oyentes.
+ * Esta función es útil para gestionar los recursos y asegurar que todos los
+ * flujos de audio se cierren adecuadamente cuando ya no son necesarios.
+ */
 function destroyAllListeners() {
     listeners.forEach((stream) => {
         stream?.destroy();
@@ -139,24 +147,28 @@ function destroyAllListeners() {
     listeners.clear();
 }
 
+
+/**
+ * Reproduce audio generado a partir del texto procesado.
+ * @param {VoiceConnection} connection - La conexión de voz a la que se envía el audio.
+ * @param {string} text - El texto que ha sido convertido a audio.
+ * @returns {Promise<void>} - Una promesa que se resuelve cuando el audio ha terminado de reproducirse o si ocurre un error.
+ */
 async function playGeneratedAudio(connection: VoiceConnection, text: string): Promise<void> {
     return new Promise(async (resolve, reject) => {
         try {
             const audioFilePath = await voiceParser.textResponse(text);
 
             if (!audioFilePath) {
-                // reject(new Error('No se generó un archivo de audio.'));
                 return;
             }
 
-            console.log(`Reproduciendo archivo de audio: ${audioFilePath}`);
             const resource = createAudioResource(audioFilePath);
 
             connection.subscribe(player);
             player.play(resource);
 
             player.once(AudioPlayerStatus.Idle, () => {
-                console.log('Reproducción finalizada.');
                 fs.unlink(audioFilePath, (err) => {
                     if (err) console.error('Error al eliminar el archivo de audio:', err);
                 });
@@ -173,9 +185,15 @@ async function playGeneratedAudio(connection: VoiceConnection, text: string): Pr
     });
 }
 
+
+/**
+ * Reproduce un sonido de notificación almacenado en un archivo.
+ * @param {VoiceConnection} connection - La conexión de voz donde se reproducirá el sonido.
+ * @param {string} fileName - El nombre del archivo de sonido a reproducir.
+ * @returns {Promise<void>} - Una promesa que se resuelve cuando el sonido ha terminado de reproducirse.
+ */
 async function playNotificationSound(connection: VoiceConnection, fileName: string): Promise<void> {
     const filePath = path.join(__dirname, '../sounds', fileName);
-    console.log(`Reproduciendo sonido de notificación: ${filePath}`);
     if (!fs.existsSync(filePath)) {
         console.error(`El archivo de sonido no existe: ${filePath}`);
         return;

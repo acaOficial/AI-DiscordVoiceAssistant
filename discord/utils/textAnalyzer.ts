@@ -9,7 +9,7 @@ export class TextAnalyzer {
         this.activationPhrase = activationPhrase.toLowerCase();
         this.similarityThreshold = similarityThreshold;
         this.fuzzySet = FuzzySet();
-        this.fuzzySet.add(this.activationPhrase); // Agrega la frase de activación al conjunto
+        this.fuzzySet.add(this.activationPhrase);
     }
 
     /**
@@ -28,16 +28,9 @@ export class TextAnalyzer {
      */
     public processText(text: string): boolean {
         if (this.containsActivationPhrase(text)) {
-            this.activateAssistant();
             return true;
         }
         return false;
     }
 
-    /**
-     * Define la acción a realizar cuando se detecta la frase de activación.
-     */
-    private activateAssistant(): void {
-        console.log('Activación detectada. ¿En qué puedo ayudarte?');
-    }
 }

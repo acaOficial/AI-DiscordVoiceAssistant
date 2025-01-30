@@ -14,8 +14,8 @@ export class SocketClient {
 
     // Método para guardar el buffer de audio en un archivo temporal
     private saveAudioBufferToFile(audioBuffer: Buffer): string {
-        const tempFilePath = path.join(os.tmpdir(), `audio-${Date.now()}.pcm`); // Crear ruta de archivo temporal
-        fs.writeFileSync(tempFilePath, audioBuffer);  // Guardar el buffer en el archivo temporal
+        const tempFilePath = path.join(os.tmpdir(), `audio-${Date.now()}.pcm`);
+        fs.writeFileSync(tempFilePath, audioBuffer); 
         return tempFilePath;
     }
 
@@ -30,10 +30,9 @@ export class SocketClient {
             console.log('Enviando archivo de audio:', audioFilePath);
 
             socket.connect(this.port, this.host, () => {
-                // Crear un objeto con el tipo 'audio' y la ruta del archivo en lugar del contenido base64
                 const message = JSON.stringify({
                     type: 'audio',
-                    content: audioFilePath, // Usar la ruta del archivo de audio
+                    content: audioFilePath,
                 });
                 socket.write(message);
             });
@@ -64,7 +63,6 @@ export class SocketClient {
             const socket = new net.Socket();
 
             socket.connect(this.port, this.host, () => {
-                // Crear un objeto con el tipo 'text' y el contenido
                 console.log('Enviando mensaje al servidor:', text);
                 const message = JSON.stringify({
                     type: 'text',

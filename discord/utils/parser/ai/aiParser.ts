@@ -1,8 +1,8 @@
-import { VoiceParser } from "../parser";
+import { InputParser } from "../parser";
 
 import { SocketClient } from "../../client";
 
-export class AiParser implements VoiceParser {
+export class AiParser implements InputParser {
     private client: SocketClient;
     
     constructor(host: string, port: number) {
