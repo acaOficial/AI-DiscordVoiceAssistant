@@ -65,6 +65,6 @@ python server.py
 
 ## Autores
 
-- **Eduardo Ortega** - [Github](https://github.com/EduardoOrtegaZerpa)
-- **Acaymo Granado** - [Github](https://github.com/acaOficial)
+- **Eduardo Ortega** - [Github](https://github.com/EduardoOrtegaZerpa) - [LinkedIn](https://www.linkedin.com/in/eduortza/)
+- **Acaymo Granado** - [Github](https://github.com/acaOficial) - [LinkedIn](https://www.linkedin.com/in/acaymo-granado-s%C3%A1nchez-453747307/)
 
