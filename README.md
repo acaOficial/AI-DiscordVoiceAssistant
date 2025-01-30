@@ -37,14 +37,14 @@ El servidor recibe los datos de texto y audio, procesándolos con los modelos de
 
 ```bash
 # Clonar el repositorio
-git clone <URL del repositorio>
+git clone [<URL del repositorio>](https://github.com/acaOficial/AI-DiscordVoiceAssistant.git)
 
 # Instalar dependencias para el módulo de Discord
-cd discord_module
+cd discord
 npm install
 
 # Instalar dependencias para el servidor Python
-cd ../python_module
+cd ../ai
 pip install -r requirements.txt
 ```
 
@@ -54,10 +54,10 @@ Para iniciar el bot, el usuario debe decir "Hola asistente". Después de escucha
 
 ```bash
 # Iniciar el módulo de Discord
-cd discord_module
+cd discord
 npm start
 
 # En otra terminal, iniciar el servidor de Python
-cd ../python_module
+cd ../ai
 python server.py
 ```
