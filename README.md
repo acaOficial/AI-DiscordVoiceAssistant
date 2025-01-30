@@ -55,7 +55,8 @@ Para iniciar el bot, el usuario debe decir "Hola asistente". Después de escucha
 ```bash
 # Iniciar el módulo de Discord
 cd discord
-npm start
+npm run build
+npm run start
 
 # En otra terminal, iniciar el servidor de Python
 cd ../ai
