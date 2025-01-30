@@ -62,3 +62,9 @@ npm run start
 cd ../ai
 python server.py
 ```
+
+## Autores
+
+- **Eduardo Ortega** - [Github](https://github.com/EduardoOrtegaZerpa)
+- **Acaymo Granado** - [Github](https://github.com/acaOficial)
+
