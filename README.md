@@ -46,3 +46,18 @@ npm install
 # Instalar dependencias para el servidor Python
 cd ../python_module
 pip install -r requirements.txt
+```
+
+## Ejecución
+
+Para iniciar el bot, el usuario debe decir "Hola asistente". Después de escuchar el sonido de notificación, puede lanzar su pregunta.
+
+```bash
+# Iniciar el módulo de Discord
+cd discord_module
+npm start
+
+# En otra terminal, iniciar el servidor de Python
+cd ../python_module
+python server.py
+```
