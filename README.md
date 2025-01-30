@@ -37,7 +37,7 @@ El servidor recibe los datos de texto y audio, procesándolos con los modelos de
 
 ```bash
 # Clonar el repositorio
-git clone [<URL del repositorio>](https://github.com/acaOficial/AI-DiscordVoiceAssistant.git)
+git clone https://github.com/acaOficial/AI-DiscordVoiceAssistant.git
 
 # Instalar dependencias para el módulo de Discord
 cd discord
